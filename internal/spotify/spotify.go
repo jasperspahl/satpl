@@ -16,8 +16,14 @@ func init() {
 		ClientID:     config.AppConfig.SpotifyClientId,
 		ClientSecret: config.AppConfig.SpotifyClientSecret,
 		RedirectURL:  config.AppConfig.SpotifyRedirectUrl,
-		Scopes:       []string{"user-read-private", "user-read-email"},
 		Endpoint:     sptfy.Endpoint,
+		Scopes: []string{
+			"user-read-private",
+			"user-read-email",
+			"playlist-read-private",
+			"playlist-modify-private",
+			"playlist-modify-public",
+		},
 	}
 }
 
@@ -31,6 +37,7 @@ func Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (
 
 type SpotifyClient interface {
 	GetCurrentUser() (UserProfile, error)
+	CreatePlaylist(userID string, name string, public bool) (*Playlist, error)
 }
 
 type client struct {
