@@ -5,3 +5,7 @@ INSERT INTO playlists (
   name
 ) VALUES ( $1, $2, $3 )
 RETURNING *;
+
+-- name: GetPlaylistsByUserID :many
+SELECT * FROM playlists
+WHERE user_id = $1;

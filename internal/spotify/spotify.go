@@ -38,6 +38,7 @@ func Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (
 type SpotifyClient interface {
 	GetCurrentUser() (UserProfile, error)
 	CreatePlaylist(userID string, name string, public bool) (*Playlist, error)
+	Search(q string) ([]Artist, error)
 }
 
 type client struct {

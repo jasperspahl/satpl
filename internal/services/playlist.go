@@ -3,12 +3,15 @@ package services
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jasperspahl/satpl/internal/database"
-	"github.com/jasperspahl/satpl/internal/spotify"
-	"golang.org/x/oauth2"
+	"github.com/jasperspahl/satpl/internal/models"
 )
 
-type PlaylistService interface{}
+type PlaylistService interface {
+	CreatePlaylist(ctx context.Context, userID int, name string, public bool) (models.Playlist, error)
+	GetPlaylist(ctx context.Context, userID int) ([]models.Playlist, error)
+}
 
 type playlistService struct {
 	queries *database.Queries
@@ -20,28 +23,37 @@ func NewPlaylistService(q *database.Queries) PlaylistService {
 	}
 }
 
-func (s *playlistService) CreatePlaylist(ctx context.Context, userID int, name string, public bool) error {
-	user, err := s.queries.GetUserByID(ctx, int32(userID))
+func (s *playlistService) CreatePlaylist(ctx context.Context, userID int, name string, public bool) (models.Playlist, error) {
+	client, user, err := getSpotifyClientAndUser(ctx, s.queries, userID)
 	if err != nil {
-		return err
+		return models.Playlist{}, err
 	}
-	token := &oauth2.Token{
-		AccessToken:  user.AccessToken,
-		RefreshToken: user.RefreshToken,
-	}
-	client := spotify.Client(ctx, token)
 	playlist, err := client.CreatePlaylist(user.SpotifyID, name, public)
 	if err != nil {
-		return err
+		return models.Playlist{}, err
 	}
-	_, err = s.queries.CreatePlaylist(ctx, database.CreatePlaylistParams{
+	dbPlaylist, err := s.queries.CreatePlaylist(ctx, database.CreatePlaylistParams{
 		UserID:    user.ID,
 		SpotifyID: playlist.ID,
 		Name:      playlist.Name,
 	})
 	if err != nil {
-		return err
+		return models.Playlist{}, err
 	}
 
-	return nil
+	return models.Playlist{ID: int(dbPlaylist.ID), SpotifyID: dbPlaylist.SpotifyID, Name: playlist.Name}, nil
+}
+
+func (s *playlistService) GetPlaylist(ctx context.Context, userID int) ([]models.Playlist, error) {
+	playlists, err := s.queries.GetPlaylistsByUserID(ctx, int32(userID))
+	if err != nil && err != pgx.ErrNoRows {
+		return nil, err
+	}
+	result := make([]models.Playlist, len(playlists))
+	for i, playlist := range playlists {
+		result[i].ID = int(playlist.ID)
+		result[i].Name = playlist.Name
+		result[i].SpotifyID = playlist.SpotifyID
+	}
+	return result, nil
 }

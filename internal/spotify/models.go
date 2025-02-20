@@ -30,3 +30,28 @@ type Track struct {
 	ID  string `json:"ID"`
 	Uri string `json:"uri"`
 }
+
+type SearchResults struct {
+	Artists struct {
+		Items []Artist `json:"items"`
+	} `json:"artists"`
+}
+
+type Artist struct {
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	Genres       []string     `json:"genres"`
+	Images       []Image      `json:"images"`
+	Popularity   int          `json:"popularity"`
+	ExternalUrls ExternalUrls `json:"external_urls"`
+}
+
+type Image struct {
+	Url    string `json:"url"`
+	Height int    `json:"height"`
+	Width  int    `json:"width"`
+}
+
+type ExternalUrls struct {
+	Spotify string `json:"spotify"`
+}

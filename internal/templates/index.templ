@@ -1,0 +1,139 @@
+package templates
+
+import (
+	"fmt"
+	"github.com/jasperspahl/satpl/internal/models"
+	"strconv"
+)
+
+templ layout(title string) {
+	<!DOCTYPE html>
+	<html lang="de">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="color-scheme" content="light dark"/>
+			<link
+				rel="stylesheet"
+				href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.jade.min.css"
+			/>
+			<script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+			<title>satpl | { title }</title>
+		</head>
+		<body class="container">
+			{ children... }
+		</body>
+	</html>
+}
+
+templ navUnauthenicated() {
+	<nav>
+		<ul>
+			<li><strong>satpl</strong></li>
+		</ul>
+		<ul>
+			<li><a href="/login">Login</a></li>
+		</ul>
+	</nav>
+}
+
+templ navAuthenticated(username string) {
+	<nav>
+		<ul>
+			<li><strong>satpl</strong></li>
+		</ul>
+		<ul>
+			<li>Hey { username }!</li>
+			<li><a href="/logout">Logout</a></li>
+		</ul>
+	</nav>
+}
+
+templ Home() {
+	@layout("Home") {
+		@navUnauthenicated()
+		<main class="container">
+			<hgroup>
+				<h1>satpl</h1>
+				<p>spotify artists tracks playlist</p>
+			</hgroup>
+		</main>
+	}
+}
+
+templ LoggedIn(username string) {
+	@layout("Config") {
+		@navAuthenticated(username)
+		<main class="container">
+			<h1>Hallo { username }</h1>
+			<section id="playlists">
+				<h3>Playlists</h3>
+				<article>
+					<header>
+						<strong>Add new Playlist </strong>
+					</header>
+					<form hx-post="/playlists" hx-target="#playlists" hx-swap="beforeend">
+						<fieldset>
+							<input type="text" name="name" placeholder="Playlist Name"/>
+							<label>
+								<input type="checkbox" name="public"/>
+								Public
+							</label>
+						</fieldset>
+						<input type="submit" value="Submit"/>
+					</form>
+				</article>
+				<span aria-busy="true" hx-get="/playlists" hx-trigger="load" hx-swap="outerHTML">Loading Playlists ...</span>
+			</section>
+		</main>
+	}
+}
+
+templ Playlist(args models.Playlist) {
+	<article hx-include={ fmt.Sprintf("#playlist-%d", args.ID) }>
+		<input id={ fmt.Sprintf("playlist-%d", args.ID) } type="hidden" name="playlist" value={ strconv.Itoa(args.ID) }/>
+		<header><strong>{ args.Name }</strong></header>
+		<details>
+			<summary>Add Artists</summary>
+			<div class="htmx-indicator">
+				<span aria-busy="true">Searching ...</span>
+			</div>
+			<input
+				type="search"
+				name="q"
+				placeholder="Search for Artist to Add"
+				hx-get="/search"
+				hx-trigger="input changed delay:500ms, keyup[key=='Enter']"
+				hx-indicator=".htmx-indicator"
+				hx-target="next div"
+				hx-swap="innerHTML"
+			/>
+			<div></div>
+		</details>
+		<span aria-busy="true" hx-get="/artists" hx-trigger="load" hx-swap="outerHTML">Loading Artists ...</span>
+	</article>
+}
+
+templ Playlists(playlists []models.Playlist) {
+	for _, playlist := range playlists {
+		@Playlist(playlist)
+	}
+}
+
+templ Artist(artist models.Artist) {
+	<article hx-get={ string(templ.URL(fmt.Sprintf("/add?artist=%s", artist.ID))) }>
+		<div style="display: flex" class="grid">
+			<img src={ artist.Image } style="border-radius: 50%; aspect-ratio: 1/1" width="72" height="72"/>
+			<hgroup>
+				<h3>{ artist.Name }</h3>
+				<p>{ fmt.Sprintf("Populatiry: %d, Genres: %v", artist.Popularity, artist.Genres) }</p>
+			</hgroup>
+		</div>
+	</article>
+}
+
+templ Artists(artists []models.Artist) {
+	for _, artist := range artists {
+		@Artist(artist)
+	}
+}

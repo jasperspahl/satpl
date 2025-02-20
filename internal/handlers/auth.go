@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -56,6 +57,7 @@ func (h *authHandler) Callback(c *gin.Context) {
 	token, err := spotify.Exchange(c, code)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, &gin.H{"error": "Token exchange failed"})
+		return
 	}
 
 	client := spotify.Client(c, token)
@@ -70,9 +72,11 @@ func (h *authHandler) Callback(c *gin.Context) {
 		return
 	}
 	session.Set(sessionUserId, userID)
+	session.Set(sessionAccessToken, token.AccessToken)
 	err = session.Save()
 	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
+		fmt.Printf("Failed to save session: %v", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, &gin.H{"error": "unable to save session", "innerError": err})
 		return
 	}
 	c.Redirect(http.StatusTemporaryRedirect, "/")
